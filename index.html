@@ -110,6 +110,11 @@
       //AR
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
+
+        var attachPointerDragBehavior = function (mesh) {
+  var pointerDragBehavior = new BABYLON.PointerDragBehavior({ dragPlaneNormal: new BABYLON.Vector3(0, 1, 0) });
+  mesh.addBehavior(pointerDragBehavior);
+};
         var camera = new BABYLON.FreeCamera(
           "camera1",
           new BABYLON.Vector3(0, 5, -10),
