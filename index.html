@@ -166,6 +166,7 @@
               box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
               box.material = new BABYLON.StandardMaterial("boxMat", scene);
               box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+              attachPointerDragBehavior(box);
             }
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
