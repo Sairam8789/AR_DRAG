@@ -91,7 +91,23 @@
         });
         mesh.addBehavior(pointerDragBehavior);
       }
+      // for web regular
+      var createBox = function (scene) {
+        var boxSize = 2;
+        var box = BABYLON.MeshBuilder.CreateBox(
+          "box",
+          { size: boxSize },
+          scene
+        );
+        console.log("sai");
+        box.position.y = boxSize / 2; // Position the box so that its base is on the ground
+        var boxMaterial = new BABYLON.StandardMaterial("boxMaterial", scene);
+        boxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 1); // Set color to blue
+        box.material = boxMaterial;
+        return box; // Return the box if you need to reference it later
+      };
 
+      //AR
       var createScene = async function () {
         var scene = new BABYLON.Scene(engine);
         var camera = new BABYLON.FreeCamera(
@@ -107,7 +123,7 @@
           scene
         );
         light.intensity = 0.7;
-
+        createBox(scene);
         var xr = await scene.createDefaultXRExperienceAsync({
           uiOptions: {
             sessionMode: "immersive-ar",
