@@ -72,6 +72,13 @@
       
 var initialScale = null;
 var lastDistance = null;
+      var createDefaultEngine = function () {
+        return new BABYLON.Engine(canvas, true, {
+          preserveDrawingBuffer: true,
+          stencil: true,
+          disableWebGL2Support: false,
+        });
+      };
 
       function attachOwnPointerDragBehavior(mesh) {
         var pointerDragBehavior = new BABYLON.PointerDragBehavior();
