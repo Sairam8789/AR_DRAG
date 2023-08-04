@@ -68,10 +68,26 @@
       var inARMode = false;
       var boxPlaced = false;
 
+function handleZoom(evt) {
+  if (evt.pointerId !== 0 && evt.pointerId !== 1) return; // Only consider the first two pointers
 
+  var pointers = scene.pointerDownPredicate ? scene.getPointers(scene.pointerDownPredicate) : scene.pointers;
+
+  if (pointers.length === 2) { // Ensure there are two pointers
+    var distance = BABYLON.Vector2.Distance(new BABYLON.Vector2(pointers[0].x, pointers[0].y), new BABYLON.Vector2(pointers[1].x, pointers[1].y));
+
+    if (initialDistance == null) {
+      initialDistance = distance;
+      initialScale = box.scaling.clone();
+    } else {
+      var scaleFactor = distance / initialDistance;
+      box.scaling = initialScale.multiplyByFloats(scaleFactor, scaleFactor, scaleFactor);
+    }
+  }
+}
       
+var initialDistance = null;
 var initialScale = null;
-var lastDistance = null;
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
           preserveDrawingBuffer: true,
@@ -207,12 +223,12 @@ var lastDistance = null;
               box.material = new BABYLON.StandardMaterial("boxMat", scene);
               box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
               //attachPointerDragBehavior(box);
+              scene.onPointerObservable.add(handleZoom, BABYLON.PointerEventTypes.POINTERMOVE);
             }
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
-            initialScale = box.scaling.clone();
-  lastDistance = null;
+           
             boxPlaced = true;
             marker.isVisible = false;
             xrTest.isEnabled = false;
@@ -223,26 +239,9 @@ var lastDistance = null;
             }, 1000);
           });
         });
-        canvas.addEventListener("touchmove", function (evt) {
-  if (evt.touches.length === 2 && boxPlaced && initialScale) {
-    var touch1 = evt.touches[0];
-    var touch2 = evt.touches[1];
-    var distance = Math.sqrt(
-      Math.pow(touch1.clientX - touch2.clientX, 2) +
-        Math.pow(touch1.clientY - touch2.clientY, 2)
-    );
+        
 
-    if (lastDistance) {
-      var scaleFactor = distance / lastDistance;
-      box.scaling = initialScale.multiplyByFloats(scaleFactor, scaleFactor, scaleFactor);
-    }
-
-    lastDistance = distance;
-  } else {
-    lastDistance = null;
-    initialScale = box ? box.scaling.clone() : null;
-  }
-});
+  
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (ignoreHitTest) return;
