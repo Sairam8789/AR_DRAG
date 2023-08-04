@@ -179,23 +179,35 @@
         marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
         marker.material.alpha = 0.5;
         marker.isVisible = false;
-       xrTest.onHitTestResultObservable.add((results) => {
-    if (!hitTestingActive || !results.length) return;
+     
 
-    let hitTest = results[0];
-    hitTest.transformationMatrix.decompose(
-      marker.scaling,
-      marker.rotationQuaternion,
-      marker.position
-    );
-    marker.isVisible = true;
-    console.log("Hit test active"); // Diagnostic log
+  xrTest.onHitTestResultObservable.add((results) => {
+    if (!hitTestingActive) {
+      marker.isVisible = false;
+      return;
+    }
+
+    if (results.length) {
+      let hitTest = results[0];
+      hitTest.transformationMatrix.decompose(
+        marker.scaling,
+        marker.rotationQuaternion,
+        marker.position
+      );
+      marker.isVisible = true;
+    } else {
+      marker.isVisible = false;
+    }
   });
+
+  
+
+
 
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
           xrSessionInit = true; // XR session is now initialized
           session.addEventListener("select", function () {
-            if (!marker.isVisible || boxPlaced) {
+            if (!marker.isVisible || box) {
               return;
             }
             if (!box) {
@@ -227,8 +239,8 @@
             //   ignoreHitTest = false;
             //   marker.isVisible = false;
             // }, 1000);
-            hitTestingActive = false; // Disable further hit testing
-      marker.isVisible = false; // Hide the marker
+           hitTestingActive = false; // Disable further hit testing
+      marker.isVisible = false;
       console.log("Box placed, hit testing disabled"); // Diagnostic log
           });
         });
