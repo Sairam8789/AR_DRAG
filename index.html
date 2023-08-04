@@ -70,32 +70,9 @@
       var pinchStartDistance = 0;
       var initialScaling = 1;
 
-      function handlePinchStart(event) {
-        if (!box) return;
+      
 
-        var touches = event.touches;
-        if (touches.length === 2) {
-          var dx = touches[0].clientX - touches[1].clientX;
-          var dy = touches[0].clientY - touches[1].clientY;
-          pinchStartDistance = Math.sqrt(dx * dx + dy * dy);
-          initialScaling = box.scaling.x;
-        }
-      }
-
-      function handlePinchMove(event) {
-        if (!box || event.touches.length !== 2) return;
-
-        var dx = event.touches[0].clientX - event.touches[1].clientX;
-        var dy = event.touches[0].clientY - event.touches[1].clientY;
-        var pinchCurrentDistance = Math.sqrt(dx * dx + dy * dy);
-
-        var scaleFactor = pinchCurrentDistance / pinchStartDistance;
-        box.scaling.set(
-          initialScaling * scaleFactor,
-          initialScaling * scaleFactor,
-          initialScaling * scaleFactor
-        );
-      }
+       
 
 
       var createDefaultEngine = function () {
@@ -199,6 +176,141 @@ camera.wheelPrecision = 50;
           },
           optionalFeatures: true,
         });
+        const MINIMUM_SIZE = 0.1
+    const MAXIMUM_SIZE = 2
+
+    const pointerCache = []
+    let prevDiffX = -1;
+    let prevDiffY = -1;
+    let scalingFactor = 1
+
+    let clockwise = false
+    let antiClockwise = false
+
+
+    scene.registerBeforeRender(()=> {
+        if (pointerCache.length > 1) {
+            if (clockwise) {
+                box.material = clockwiseMat
+            } else if (antiClockwise) {
+                box.material = antiClockwiseMat
+            } else {
+                box.material = multiTouchMat
+            }
+        } else if (pointerCache.length) {
+            box.material = oneTouchMat
+        } else {
+            box.material = noTouchMat
+        }
+    })
+
+    scene.onPointerObservable.add((pointerInfo) => {
+      switch (pointerInfo.type) {
+        case BABYLON.PointerEventTypes.POINTERDOWN:
+          console.log('SCREEN COORDINATE:', pointerInfo.pickInfo.ray.origin);
+          pointerCache.push(pointerInfo)
+        //   console.log('pointerCache:',pointerCache)
+          break;
+        case BABYLON.PointerEventTypes.POINTERUP:
+        //   console.log('POINTER UP');
+          remove_event(pointerInfo)
+          break;
+        case BABYLON.PointerEventTypes.POINTERMOVE:
+        //   console.log('POINTER MOVE');
+        //   console.log('scalingFactor:',scalingFactor)
+          pointermove_handler(pointerInfo)
+          break;
+        default:
+        //   console.log('DEFAULT TYPE...?');
+          break;
+      }
+    });
+
+    function remove_event(pointerInfo) {
+      // Remove this event from the target's cache
+      for (let i = 0; i < pointerCache.length; i++) {
+        if (pointerCache[i].event.id === pointerInfo.event.id) {
+          pointerCache.splice(i, 1);
+          break;
+        }
+      }
+    }
+
+    function pointermove_handler(ev) {
+        // reset rotation flags
+        clockwise = false
+        antiClockwise = false
+
+        // Find this event in the cache and update its record with this event
+        for (var i = 0; i < pointerCache.length; i++) {
+            if (ev.event.pointerId == pointerCache[i].event.pointerId) {
+                pointerCache[i] = ev;
+                break;
+            }
+        }
+        // If two pointers are down, check for pinch gestures
+        if (pointerCache.length == 2) {
+            // pointerCache[0] will be first finger pressed, [1] will be this event
+
+            // assign the 2 pointers 
+            const firstPoint = {x:pointerCache[0].pickInfo.ray.origin.x ,y:pointerCache[0].pickInfo.ray.origin.y }
+            const secondPoint = {x:pointerCache[1].pickInfo.ray.origin.x ,y:pointerCache[1].pickInfo.ray.origin.y }
+            
+            // get the difference in X & Y coords between the 2 points
+            const curDiffX = Math.abs(firstPoint.x - secondPoint.x);
+            const curDiffY = Math.abs(firstPoint.y - secondPoint.y);
+
+            // console.table({x: [firstPoint.x,secondPoint.x], y: [firstPoint.y,secondPoint.y]})
+
+            // check we already have the previous difference from last move event
+            if (prevDiffX > 0 && prevDiffY > 0) {
+                // PINCH GESTURES
+                if (curDiffX > prevDiffX && curDiffY > prevDiffY) {
+                    // The distance between the two pointers has increased on both axis
+                    // increase scaling factor applied to base size
+                    console.log('scaling up')
+                    if (scalingFactor < MAXIMUM_SIZE) scalingFactor += 0.02
+                    // scale the model
+                    box.scaling = new BABYLON.Vector3(3*scalingFactor,1.5*scalingFactor,2*scalingFactor)
+                }
+                if (curDiffX < prevDiffX && curDiffY < prevDiffY) {
+                    // The distance between the two pointers has decreased
+                    // same as above, but decrease scalingFactor
+                    console.log('scaling down')
+                    if (scalingFactor > MINIMUM_SIZE) scalingFactor -= 0.02
+                    box.scaling = new BABYLON.Vector3(3*scalingFactor,1.5*scalingFactor,2*scalingFactor)
+                }
+                // ROTATION GESTURES
+                // check if the points are moving apart on Y axis and together on X axis
+                if (curDiffX < prevDiffX && curDiffY > prevDiffY) {
+                    // check position of the points on each axis
+                    if (secondPoint.y > firstPoint.y && firstPoint.x > secondPoint.x ) {
+                        console.log('rotating clockwise (T)')
+                        // clockwise = true
+                        box.rotate(new BABYLON.Vector3(0, 1, 0), Math.PI/180);
+                    } else {
+                        console.log('rotating anti-clockwise (T)')
+                        // antiClockwise = true
+                        box.rotate(new BABYLON.Vector3(0, 1, 0), (Math.PI/180)*359);
+                    }
+                } else {
+                    if (secondPoint.y > firstPoint.y && firstPoint.x > secondPoint.x ) {
+                        console.log('rotating anti-clockwise (X)')
+                        // antiClockwise = true
+                        box.rotate(new BABYLON.Vector3(0, 1, 0), (Math.PI/180)*359);
+                    } else {
+                        console.log('rotating clockwise (X)')
+                        // clockwise = true
+                        box.rotate(new BABYLON.Vector3(0, 1, 0), Math.PI/180);
+                    }
+                }
+            }
+
+            // Cache the distance for the next move event
+            prevDiffX = curDiffX;
+            prevDiffY = curDiffY;
+        }
+    }
 
         const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
