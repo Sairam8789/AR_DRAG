@@ -238,17 +238,17 @@
       engine = createDefaultEngine();
       if (!engine) throw "engine should not be null.";
 
-      if (inARMode) {
-        createScene().then(function (newScene) {
-          scene = newScene;
-          sceneToRender = scene;
-          startRenderLoop(engine, canvas);
-        });
-      } else {
-        scene = createRegularScene();
-        sceneToRender = scene;
-        startRenderLoop(engine, canvas);
-      }
+     if (!inARMode) {
+  scene = createRegularScene();
+  sceneToRender = scene;
+  startRenderLoop(engine, canvas);
+} else {
+  createScene().then(function (newScene) {
+    scene = newScene;
+    sceneToRender = scene;
+    startRenderLoop(engine, canvas);
+  });
+}
 
       createScene().then(function (newScene) {
         scene = newScene;
