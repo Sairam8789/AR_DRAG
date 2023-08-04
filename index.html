@@ -65,6 +65,7 @@
       var xrSessionInit = false; // Flag to track XR session initialization
       var box = null;
       var ignoreHitTest = false;
+      var inARMode = false;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -92,34 +93,31 @@
         mesh.addBehavior(pointerDragBehavior);
       }
       // for web regular
-      var createBox = function (scene) {
+      var createBlueBox = function (scene) {
         var boxSize = 2;
         var box = BABYLON.MeshBuilder.CreateBox(
           "box",
           { size: boxSize },
           scene
         );
-        console.log("sai");
-        box.position.y = boxSize / 2; // Position the box so that its base is on the ground
+        box.position.y = boxSize / 2;
         var boxMaterial = new BABYLON.StandardMaterial("boxMaterial", scene);
-        boxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 1); // Set color to blue
+        boxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 1); // Blue color
         box.material = boxMaterial;
-        return box; // Return the box if you need to reference it later
       };
 
-      //AR
-      var createScene = async function () {
+      // Regular scene with a blue box
+      var createRegularScene = function () {
         var scene = new BABYLON.Scene(engine);
-
-        var attachPointerDragBehavior = function (mesh) {
-  var pointerDragBehavior = new BABYLON.PointerDragBehavior({ dragPlaneNormal: new BABYLON.Vector3(0, 1, 0) });
-  mesh.addBehavior(pointerDragBehavior);
-};
-        var camera = new BABYLON.FreeCamera(
+        var camera = new BABYLON.ArcRotateCamera(
           "camera1",
-          new BABYLON.Vector3(0, 5, -10),
+          -Math.PI / 2,
+          Math.PI / 2,
+          10,
+          BABYLON.Vector3.Zero(),
           scene
         );
+        camera.attachControl(canvas, true);
         camera.setTarget(BABYLON.Vector3.Zero());
         camera.attachControl(canvas, true);
         var light = new BABYLON.HemisphericLight(
@@ -128,7 +126,38 @@
           scene
         );
         light.intensity = 0.7;
-        createBox(scene);
+        createBlueBox(scene); // Add blue box
+        return scene;
+      };
+
+      //AR
+      var createScene = async function () {
+        var scene = new BABYLON.Scene(engine);
+
+        var attachPointerDragBehavior = function (mesh) {
+          var pointerDragBehavior = new BABYLON.PointerDragBehavior({
+            dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
+          });
+          mesh.addBehavior(pointerDragBehavior);
+        };
+        var camera = new BABYLON.ArcRotateCamera(
+          "camera1",
+          -Math.PI / 2,
+          Math.PI / 2,
+          10,
+          BABYLON.Vector3.Zero(),
+          scene
+        );
+
+        camera.setTarget(BABYLON.Vector3.Zero());
+        camera.attachControl(canvas, true);
+        var light = new BABYLON.HemisphericLight(
+          "light",
+          new BABYLON.Vector3(0, 1, 0),
+          scene
+        );
+        light.intensity = 0.7;
+        // createBox(scene);
         var xr = await scene.createDefaultXRExperienceAsync({
           uiOptions: {
             sessionMode: "immersive-ar",
@@ -209,11 +238,23 @@
       engine = createDefaultEngine();
       if (!engine) throw "engine should not be null.";
 
+      if (inARMode) {
+        createScene().then(function (newScene) {
+          scene = newScene;
+          sceneToRender = scene;
+          startRenderLoop(engine, canvas);
+        });
+      } else {
+        scene = createRegularScene();
+        sceneToRender = scene;
+        startRenderLoop(engine, canvas);
+      }
+
       createScene().then(function (newScene) {
         scene = newScene;
         sceneToRender = scene;
 
-         createBox(scene); 
+        createBox(scene);
         startRenderLoop(engine, canvas);
       });
 
