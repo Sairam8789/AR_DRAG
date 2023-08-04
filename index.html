@@ -205,7 +205,8 @@
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
-            marker.isVisible = false;
+            //marker.isVisible = false;
+            marker.material.alpha = 0;
             xrTest.isEnabled = false;
             ignoreHitTest = true;
             setTimeout(() => {
