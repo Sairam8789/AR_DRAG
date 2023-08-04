@@ -70,42 +70,9 @@
 
 
       
-var previousPinchDistance = null;
+var initialScale = null;
+var lastDistance = null;
 
-// Function to handle zooming
-function handleZoom(evt) {
-  if (!boxPlaced || !box) return; // Return if the red box is not placed
-
-  if (evt.touches.length === 2) {
-    var currentPinchDistance = Math.sqrt(
-      Math.pow(evt.touches[0].clientX - evt.touches[1].clientX, 2) +
-        Math.pow(evt.touches[0].clientY - evt.touches[1].clientY, 2)
-    );
-
-    if (previousPinchDistance && Math.abs(currentPinchDistance - previousPinchDistance) > 10) {
-      // The scaling factor will control the speed of the zoom
-      var scalingFactor = 0.01;
-      var scaling = (currentPinchDistance - previousPinchDistance) * scalingFactor;
-
-      box.scaling.addInPlace(new BABYLON.Vector3(scaling, scaling, scaling));
-    }
-
-    previousPinchDistance = currentPinchDistance;
-  } else {
-    previousPinchDistance = null;
-  }
-}
-
-// Attach the zoom handler
-canvas.addEventListener('touchmove', handleZoom, false);
-
-      var createDefaultEngine = function () {
-        return new BABYLON.Engine(canvas, true, {
-          preserveDrawingBuffer: true,
-          stencil: true,
-          disableWebGL2Support: false,
-        });
-      };
       function attachOwnPointerDragBehavior(mesh) {
         var pointerDragBehavior = new BABYLON.PointerDragBehavior();
         pointerDragBehavior.moveAttached = false;
@@ -232,11 +199,13 @@ canvas.addEventListener('touchmove', handleZoom, false);
               box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
               box.material = new BABYLON.StandardMaterial("boxMat", scene);
               box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-              attachPointerDragBehavior(box);
+              //attachPointerDragBehavior(box);
             }
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
+            initialScale = box.scaling.clone();
+  lastDistance = null;
             boxPlaced = true;
             marker.isVisible = false;
             xrTest.isEnabled = false;
@@ -247,6 +216,26 @@ canvas.addEventListener('touchmove', handleZoom, false);
             }, 1000);
           });
         });
+        canvas.addEventListener("touchmove", function (evt) {
+  if (evt.touches.length === 2 && boxPlaced && initialScale) {
+    var touch1 = evt.touches[0];
+    var touch2 = evt.touches[1];
+    var distance = Math.sqrt(
+      Math.pow(touch1.clientX - touch2.clientX, 2) +
+        Math.pow(touch1.clientY - touch2.clientY, 2)
+    );
+
+    if (lastDistance) {
+      var scaleFactor = distance / lastDistance;
+      box.scaling = initialScale.multiplyByFloats(scaleFactor, scaleFactor, scaleFactor);
+    }
+
+    lastDistance = distance;
+  } else {
+    lastDistance = null;
+    initialScale = box ? box.scaling.clone() : null;
+  }
+});
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (ignoreHitTest) return;
