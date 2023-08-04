@@ -165,13 +165,13 @@ var initialScale = null;
         // Function to handle pinch gesture
        var initialDistance = 0;
 
-scene.addEventListener("touchstart", function(e) {
+canvas.addEventListener("touchstart", function(e) {
     if (e.touches.length == 2) {
         initialDistance = getDistance(e.touches[0], e.touches[1]);
     }
 }, false);
 
-scene.addEventListener("touchmove", function(e) {
+canvas.addEventListener("touchmove", function(e) {
     if (e.touches.length == 2 && boxPlaced && inARMode) {
         var currentDistance = getDistance(e.touches[0], e.touches[1]);
         var scale = currentDistance / initialDistance;
@@ -219,9 +219,9 @@ function getDistance(touch1, touch2) {
             sessionMode: "immersive-ar",
           },
           optionalFeatures: true,
-          pointerSelectionOptions: {
-            enablePointerSelectionOnAllControllers: true
-        }
+        //   pointerSelectionOptions: {
+        //     enablePointerSelectionOnAllControllers: true
+        // }
         });
 
         const fm = xr.baseExperience.featuresManager;
