@@ -198,7 +198,7 @@
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
           xrSessionInit = true; // XR session is now initialized
           session.addEventListener("select", function () {
-            if (!marker.isVisible) {
+            if (!marker.isVisible||ignoreHitTest) {
               return;
             }
             if (!box) {
