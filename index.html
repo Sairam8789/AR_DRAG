@@ -149,9 +149,13 @@
           BABYLON.Vector3.Zero(),
           scene
         );
+        camera.attachControl(canvas, true);
+camera.inertialAlphaOffset = 0; // prevent rotation
+camera.pinchPrecision = 500; // Increase this value for less sensitivity to pinch
+camera.wheelPrecision = 50;
 
         camera.setTarget(BABYLON.Vector3.Zero());
-        camera.attachControl(canvas, true);
+        
         var light = new BABYLON.HemisphericLight(
           "light",
           new BABYLON.Vector3(0, 1, 0),
