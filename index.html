@@ -158,7 +158,6 @@
         );
         light.intensity = 0.7;
         // createBox(scene);
-        createRegularScene(scene);
         var xr = await scene.createDefaultXRExperienceAsync({
           uiOptions: {
             sessionMode: "immersive-ar",
@@ -236,27 +235,48 @@
         return scene;
       };
 
-     engine = createDefaultEngine();
-    if (!engine) throw "engine should not be null.";
+      engine = createDefaultEngine();
+      if (!engine) throw "engine should not be null.";
 
-    // First, create the regular 3D scene with the blue box
-    var regularScene = createRegularScene();
-    startRenderLoop(engine, canvas);
+      // if (!inARMode) {
+      //   scene = createRegularScene();
+      //   sceneToRender = scene;
+      //   startRenderLoop(engine, canvas);
+      // } else {
+      //   createScene().then(function (newScene) {
+      //     scene = newScene;
+      //     sceneToRender = scene;
+      //     startRenderLoop(engine, canvas);
+      //   });
+      // }
 
-    // Then, create the AR scene
-    createScene().then(function (arScene) {
-      scene = arScene;
+      // createScene().then(function (newScene) {
+      //   scene = newScene;
+      //   sceneToRender = scene;
+
+      //   //createRegularScene(scene);
+      //   startRenderLoop(engine, canvas);
+      // });
+
+      // // Resize
+      // window.addEventListener("resize", function () {
+      //   engine.resize();
+      // });
+      if (!inARMode) {
+        scene = createRegularScene();
+      } else {
+        createARScene().then(function (newScene) {
+          scene = newScene;
+        });
+      }
+
       sceneToRender = scene;
-    });
+      startRenderLoop(engine, canvas);
 
-    // Resize
-    window.addEventListener("resize", function () {
-      engine.resize();
-    });
-  </script>
-</body>
+      // Resize
+      window.addEventListener("resize", function () {
+        engine.resize();
+      });
+    </script>
+  </body>
 </html>
-
-
-
-
