@@ -165,13 +165,13 @@ var initialScale = null;
         // Function to handle pinch gesture
        var initialDistance = 0;
 
-canvas.addEventListener("touchstart", function(e) {
+scene.addEventListener("touchstart", function(e) {
     if (e.touches.length == 2) {
         initialDistance = getDistance(e.touches[0], e.touches[1]);
     }
 }, false);
 
-canvas.addEventListener("touchmove", function(e) {
+scene.addEventListener("touchmove", function(e) {
     if (e.touches.length == 2 && boxPlaced && inARMode) {
         var currentDistance = getDistance(e.touches[0], e.touches[1]);
         var scale = currentDistance / initialDistance;
