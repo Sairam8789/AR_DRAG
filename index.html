@@ -238,40 +238,25 @@
       engine = createDefaultEngine();
       if (!engine) throw "engine should not be null.";
 
-      // if (!inARMode) {
-      //   scene = createRegularScene();
-      //   sceneToRender = scene;
-      //   startRenderLoop(engine, canvas);
-      // } else {
-      //   createScene().then(function (newScene) {
-      //     scene = newScene;
-      //     sceneToRender = scene;
-      //     startRenderLoop(engine, canvas);
-      //   });
-      // }
-
-      // createScene().then(function (newScene) {
-      //   scene = newScene;
-      //   sceneToRender = scene;
-
-      //   //createRegularScene(scene);
-      //   startRenderLoop(engine, canvas);
-      // });
-
-      // // Resize
-      // window.addEventListener("resize", function () {
-      //   engine.resize();
-      // });
-      if (inARMode) {
+      if (!inARMode) {
         scene = createRegularScene();
+        sceneToRender = scene;
+        startRenderLoop(engine, canvas);
       } else {
-        createARScene().then(function (newScene) {
+        createScene().then(function (newScene) {
           scene = newScene;
+          sceneToRender = scene;
+          startRenderLoop(engine, canvas);
         });
       }
 
-      sceneToRender = scene;
-      startRenderLoop(engine, canvas);
+      createScene().then(function (newScene) {
+        scene = newScene;
+        sceneToRender = scene;
+
+        //createRegularScene(scene);
+        startRenderLoop(engine, canvas);
+      });
 
       // Resize
       window.addEventListener("resize", function () {
