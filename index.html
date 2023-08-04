@@ -2,8 +2,28 @@
 <html>
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+
     <title>Babylon.js AR sample code</title>
+
+    <!-- Babylon.js -->
+    <!-- (include all required Babylon.js libraries here) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+    <script src="https://assets.babylonjs.com/generated/Assets.js"></script>
+    <script src="https://cdn.babylonjs.com/recast.js"></script>
+    <script src="https://cdn.babylonjs.com/ammo.js"></script>
+    <script src="https://cdn.babylonjs.com/havok/HavokPhysics_umd.js"></script>
+    <script src="https://cdn.babylonjs.com/cannon.js"></script>
+    <script src="https://cdn.babylonjs.com/Oimo.js"></script>
+    <script src="https://cdn.babylonjs.com/earcut.min.js"></script>
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/materialsLibrary/babylonjs.materials.min.js"></script>
+    <script src="https://cdn.babylonjs.com/proceduralTexturesLibrary/babylonjs.proceduralTextures.min.js"></script>
+    <script src="https://cdn.babylonjs.com/postProcessesLibrary/babylonjs.postProcess.min.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.js"></script>
+    <script src="https://cdn.babylonjs.com/serializers/babylonjs.serializers.min.js"></script>
+    <script src="https://cdn.babylonjs.com/gui/babylon.gui.min.js"></script>
+    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+
     <style>
       html,
       body {
@@ -19,137 +39,232 @@
         height: 100%;
         touch-action: none;
       }
+
+      #canvasZone {
+        width: 100%;
+        height: 100%;
+      }
     </style>
   </head>
   <body>
-    <canvas id="renderCanvas"></canvas>
+    <div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
     <script>
-  var canvas = document.getElementById("renderCanvas");
-  var engine = null;
-  var scene = null;
-  var sceneToRender = null;
-  var box = null;
-  var inARMode = false;
-  var hitTestingActive = true;
+      var canvas = document.getElementById("renderCanvas");
 
-  var createDefaultEngine = function () {
-    return new BABYLON.Engine(canvas, true, {
-      preserveDrawingBuffer: true,
-      stencil: true,
-      disableWebGL2Support: false,
-    });
-  };
+      var startRenderLoop = function (engine, canvas) {
+        engine.runRenderLoop(function () {
+          if (sceneToRender && sceneToRender.activeCamera) {
+            sceneToRender.render();
+          }
+        });
+      };
 
-  //function attachPointerDragBehavior(mesh) {
-  //   var pointerDragBehavior = new BABYLON.PointerDragBehavior({
-  //     dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
-  //   });
-  //   mesh.addBehavior(pointerDragBehavior);
-  // }
-      function attachPointerDragBehavior(mesh) {
-  var pointerDragBehavior = new BABYLON.PointerDragBehavior({
-    dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
-  });
+      var engine = null;
+      var scene = null;
+      var sceneToRender = null;
+      var xrSessionInit = false; // Flag to track XR session initialization
+      var box = null;
+      var ignoreHitTest = false;
+      var inARMode = false;
+      var boxPlaced = false;
 
-  pointerDragBehavior.onDragStartObservable.add(() => {
-    console.log('Drag started');
-  });
-  pointerDragBehavior.onDragObservable.add((event) => {
-    console.log('Dragging', event);
-  });
-  pointerDragBehavior.onDragEndObservable.add(() => {
-    console.log('Drag ended');
-  });
+      var createDefaultEngine = function () {
+        return new BABYLON.Engine(canvas, true, {
+          preserveDrawingBuffer: true,
+          stencil: true,
+          disableWebGL2Support: false,
+        });
+      };
+      function attachOwnPointerDragBehavior(mesh) {
+        var pointerDragBehavior = new BABYLON.PointerDragBehavior();
+        pointerDragBehavior.moveAttached = false;
+        pointerDragBehavior.useObjectOrientationForDragging = false;
 
-  mesh.addBehavior(pointerDragBehavior);
-}
-
-  // AR
-  var createScene = async function () {
-    var scene = new BABYLON.Scene(engine);
-    var camera = new BABYLON.ArcRotateCamera("camera1", -Math.PI / 2, Math.PI / 2, 10, BABYLON.Vector3.Zero(), scene);
-    camera.setTarget(BABYLON.Vector3.Zero());
-    camera.attachControl(canvas, true);
-    var light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(0, 1, 0), scene);
-    light.intensity = 0.7;
-
-    var xr = await scene.createDefaultXRExperienceAsync({
-      uiOptions: { sessionMode: "immersive-ar" },
-      optionalFeatures: true,
-    });
-
-    const fm = xr.baseExperience.featuresManager;
-    const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
-
-    const marker = BABYLON.MeshBuilder.CreateGround("marker", { width: 1, height: 1 }, scene);
-    marker.material = new BABYLON.StandardMaterial("markerMat", scene);
-    marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
-    marker.material.alpha = 0.5;
-    marker.isVisible = false;
-
-    xrTest.onHitTestResultObservable.add((results) => {
-      if (!hitTestingActive) {
-        marker.isVisible = false;
-        return;
+        pointerDragBehavior.onDragStartObservable.add((event) => {
+          console.log("startDrag");
+        });
+        pointerDragBehavior.onDragObservable.add((event) => {
+          console.log("drag");
+          pointerDragBehavior.attachedNode.position.x += event.delta.x;
+          pointerDragBehavior.attachedNode.position.z += event.delta.z;
+        });
+        pointerDragBehavior.onDragEndObservable.add((event) => {
+          console.log("endDrag");
+        });
+        mesh.addBehavior(pointerDragBehavior);
       }
-
-      if (results.length) {
-        let hitTest = results[0];
-        hitTest.transformationMatrix.decompose(
-          marker.scaling,
-          marker.rotationQuaternion,
-          marker.position
+      // for web regular
+      var createBlueBox = function (scene) {
+        var boxSize = 2;
+        var box = BABYLON.MeshBuilder.CreateBox(
+          "box",
+          { size: boxSize },
+          scene
         );
-        marker.isVisible = true;
+        box.position.y = boxSize / 2;
+        var boxMaterial = new BABYLON.StandardMaterial("boxMaterial", scene);
+        boxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 1); // Blue color
+        box.material = boxMaterial;
+      };
+
+      // Regular scene with a blue box
+      var createRegularScene = function () {
+        var scene = new BABYLON.Scene(engine);
+        var camera = new BABYLON.ArcRotateCamera(
+          "camera1",
+          -Math.PI / 2,
+          Math.PI / 2,
+          10,
+          BABYLON.Vector3.Zero(),
+          scene
+        );
+        camera.attachControl(canvas, true);
+        camera.setTarget(BABYLON.Vector3.Zero());
+        camera.attachControl(canvas, true);
+        var light = new BABYLON.HemisphericLight(
+          "light",
+          new BABYLON.Vector3(0, 1, 0),
+          scene
+        );
+        light.intensity = 0.7;
+        createBlueBox(scene); // Add blue box
+        return scene;
+      };
+
+      //AR
+      var createScene = async function () {
+        var scene = new BABYLON.Scene(engine);
+
+        var attachPointerDragBehavior = function (mesh) {
+          var pointerDragBehavior = new BABYLON.PointerDragBehavior({
+            dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
+          });
+          mesh.addBehavior(pointerDragBehavior);
+        };
+        var camera = new BABYLON.ArcRotateCamera(
+          "camera1",
+          -Math.PI / 2,
+          Math.PI / 2,
+          10,
+          BABYLON.Vector3.Zero(),
+          scene
+        );
+
+        camera.setTarget(BABYLON.Vector3.Zero());
+        camera.attachControl(canvas, true);
+        var light = new BABYLON.HemisphericLight(
+          "light",
+          new BABYLON.Vector3(0, 1, 0),
+          scene
+        );
+        light.intensity = 0.7;
+        // createBox(scene);
+        var xr = await scene.createDefaultXRExperienceAsync({
+          uiOptions: {
+            sessionMode: "immersive-ar",
+          },
+          optionalFeatures: true,
+        });
+
+        const fm = xr.baseExperience.featuresManager;
+        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
+
+        const marker = BABYLON.MeshBuilder.CreateGround(
+          "marker",
+          { width: 1, height: 1 },
+          scene
+        );
+        marker.material = new BABYLON.StandardMaterial("markerMat", scene);
+        marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
+        marker.material.alpha = 0.5;
+        marker.isVisible = false;
+
+        xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
+          xrSessionInit = true; // XR session is now initialized
+          session.addEventListener("select", function () {
+            if (!marker.isVisible || boxPlaced) {
+              return;
+            }
+            if (!box) {
+              // Load model
+              // BABYLON.SceneLoader.ImportMesh(
+              //   "",
+              //   "/",
+              //   "AR_Precedent_V3_2Kres.glb",
+              //   scene,
+              //   function (newMeshes) {
+              //     box = newMeshes[0]; // Assuming the imported GLB has only one mesh
+              //     box.scaling = new BABYLON.Vector3(0.1, 0.1, 0.1); // scale down the model
+              //     attachOwnPointerDragBehavior(box);
+              //   }
+              // );
+              box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
+              box.material = new BABYLON.StandardMaterial("boxMat", scene);
+              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+              attachPointerDragBehavior(box);
+            }
+            box.position = marker.position.clone();
+            box.rotationQuaternion = marker.rotationQuaternion.clone();
+            box.scaling = marker.scaling.clone();
+            boxPlaced = true;
+            marker.isVisible = false;
+            xrTest.isEnabled = false;
+            ignoreHitTest = true;
+            setTimeout(() => {
+              ignoreHitTest = false;
+              marker.isVisible = false;
+            }, 1000);
+          });
+        });
+
+        xrTest.onHitTestResultObservable.add((results) => {
+          if (ignoreHitTest) return;
+
+          if (results.length) {
+            if (!box) {
+              marker.isVisible = true;
+            }
+            let hitTest = results[0];
+            hitTest.transformationMatrix.decompose(
+              marker.scaling,
+              marker.rotationQuaternion,
+              marker.position
+            );
+          } else {
+            marker.isVisible = false;
+          }
+        });
+
+        return scene;
+      };
+
+      engine = createDefaultEngine();
+      if (!engine) throw "engine should not be null.";
+
+      if (!inARMode) {
+        scene = createRegularScene();
+        sceneToRender = scene;
+        startRenderLoop(engine, canvas);
       } else {
-        marker.isVisible = false;
+        createScene().then(function (newScene) {
+          scene = newScene;
+          sceneToRender = scene;
+          startRenderLoop(engine, canvas);
+        });
       }
-    });
 
-    xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
-      session.addEventListener("select", function () {
-        if (!marker.isVisible || box) {
-          return;
-        }
-        if (!box) {
-          box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
-          box.material = new BABYLON.StandardMaterial("boxMat", scene);
-          box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-        }
-        box.position = marker.position.clone();
-        box.rotationQuaternion = marker.rotationQuaternion.clone();
-        box.scaling = marker.scaling.clone();
+      createScene().then(function (newScene) {
+        scene = newScene;
+        sceneToRender = scene;
 
-        attachPointerDragBehavior(box); // Attach drag behavior
-
-        hitTestingActive = false; // Disable further hit testing
-        marker.isVisible = false;
-        console.log("Box placed, hit testing disabled");
+        //createRegularScene(scene);
+        startRenderLoop(engine, canvas);
       });
-    });
 
-    return scene;
-  };
-
-  engine = createDefaultEngine();
-  if (!engine) throw "engine should not be null.";
-
-  createScene().then(function (newScene) {
-    scene = newScene;
-    sceneToRender = scene;
-
-    engine.runRenderLoop(function () {
-      if (sceneToRender && sceneToRender.activeCamera) {
-        sceneToRender.render();
-      }
-    });
-  });
-
-  // Resize
-  window.addEventListener("resize", function () {
-    engine.resize();
-  });
-</script>
-
+      // Resize
+      window.addEventListener("resize", function () {
+        engine.resize();
+      });
+    </script>
   </body>
 </html>
