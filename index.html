@@ -66,6 +66,7 @@
       var box = null;
       var ignoreHitTest = false;
       var inARMode = false;
+      var boxPlaced = false;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -178,7 +179,7 @@
         marker.material.alpha = 0.5;
         marker.isVisible = false;
         xrTest.onHitTestResultObservable.add((results) => {
-          if (ignoreHitTest) return;
+          if (boxPlaced || ignoreHitTest) return;
 
           if (results.length) {
             if (!box) {
@@ -198,7 +199,7 @@
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
           xrSessionInit = true; // XR session is now initialized
           session.addEventListener("select", function () {
-            if (!marker.isVisible||ignoreHitTest) {
+            if (!marker.isVisible || boxPlaced) {
               return;
             }
             if (!box) {
@@ -222,13 +223,14 @@
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
+            boxPlaced = true;
             marker.isVisible = false;
-            xrTest.isEnabled = false;
-            ignoreHitTest = true;
-            setTimeout(() => {
-              ignoreHitTest = false;
-              marker.isVisible = false;
-            }, 1000);
+            // xrTest.isEnabled = false;
+            // ignoreHitTest = true;
+            // setTimeout(() => {
+            //   ignoreHitTest = false;
+            //   marker.isVisible = false;
+            // }, 1000);
           });
         });
 
