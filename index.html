@@ -66,6 +66,7 @@
       var box = null;
       var ignoreHitTest = false;
       var inARMode = false;
+      var hitTestingActive = true;
       var boxPlaced = false;
 
       var createDefaultEngine = function () {
@@ -178,23 +179,18 @@
         marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
         marker.material.alpha = 0.5;
         marker.isVisible = false;
-        xrTest.onHitTestResultObservable.add((results) => {
-          if (boxPlaced || ignoreHitTest) return;
+       xrTest.onHitTestResultObservable.add((results) => {
+    if (!hitTestingActive || !results.length) return;
 
-          if (results.length) {
-            if (!box) {
-              marker.isVisible = true;
-            }
-            let hitTest = results[0];
-            hitTest.transformationMatrix.decompose(
-              marker.scaling,
-              marker.rotationQuaternion,
-              marker.position
-            );
-          } else {
-            marker.isVisible = false;
-          }
-        });
+    let hitTest = results[0];
+    hitTest.transformationMatrix.decompose(
+      marker.scaling,
+      marker.rotationQuaternion,
+      marker.position
+    );
+    marker.isVisible = true;
+    console.log("Hit test active"); // Diagnostic log
+  });
 
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
           xrSessionInit = true; // XR session is now initialized
@@ -223,34 +219,21 @@
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
-            boxPlaced = true;
-            marker.isVisible = false;
+           // boxPlaced = true;
+            //marker.isVisible = false;
             // xrTest.isEnabled = false;
             // ignoreHitTest = true;
             // setTimeout(() => {
             //   ignoreHitTest = false;
             //   marker.isVisible = false;
             // }, 1000);
+            hitTestingActive = false; // Disable further hit testing
+      marker.isVisible = false; // Hide the marker
+      console.log("Box placed, hit testing disabled"); // Diagnostic log
           });
         });
 
-        // xrTest.onHitTestResultObservable.add((results) => {
-        //   if (ignoreHitTest) return;
-
-        //   if (results.length) {
-        //     if (!box) {
-        //       marker.isVisible = true;
-        //     }
-        //     let hitTest = results[0];
-        //     hitTest.transformationMatrix.decompose(
-        //       marker.scaling,
-        //       marker.rotationQuaternion,
-        //       marker.position
-        //     );
-        //   } else {
-        //     marker.isVisible = false;
-        //   }
-        // });
+      
 
         return scene;
       };
