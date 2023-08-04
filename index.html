@@ -236,33 +236,27 @@
         return scene;
       };
 
-      engine = createDefaultEngine();
-      if (!engine) throw "engine should not be null.";
+     engine = createDefaultEngine();
+    if (!engine) throw "engine should not be null.";
 
-      // if (!inARMode) {
-      //   scene = createRegularScene();
-      //   sceneToRender = scene;
-      //   startRenderLoop(engine, canvas);
-      // } else {
-      //   createScene().then(function (newScene) {
-      //     scene = newScene;
-      //     sceneToRender = scene;
-      //     startRenderLoop(engine, canvas);
-      //   });
-      // }
+    // First, create the regular 3D scene with the blue box
+    var regularScene = createRegularScene();
+    startRenderLoop(engine, canvas);
 
-      createScene().then(function (newScene) {
-        scene = newScene;
-        sceneToRender = scene;
+    // Then, create the AR scene
+    createScene().then(function (arScene) {
+      scene = arScene;
+      sceneToRender = scene;
+    });
 
-        createRegularScene(scene);
-        startRenderLoop(engine, canvas);
-      });
-
-      // Resize
-      window.addEventListener("resize", function () {
-        engine.resize();
-      });
-    </script>
-  </body>
+    // Resize
+    window.addEventListener("resize", function () {
+      engine.resize();
+    });
+  </script>
+</body>
 </html>
+
+
+
+
