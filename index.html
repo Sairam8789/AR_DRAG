@@ -40,12 +40,29 @@
     });
   };
 
-  function attachPointerDragBehavior(mesh) {
-    var pointerDragBehavior = new BABYLON.PointerDragBehavior({
-      dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
-    });
-    mesh.addBehavior(pointerDragBehavior);
-  }
+  //function attachPointerDragBehavior(mesh) {
+  //   var pointerDragBehavior = new BABYLON.PointerDragBehavior({
+  //     dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
+  //   });
+  //   mesh.addBehavior(pointerDragBehavior);
+  // }
+      function attachPointerDragBehavior(mesh) {
+  var pointerDragBehavior = new BABYLON.PointerDragBehavior({
+    dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
+  });
+
+  pointerDragBehavior.onDragStartObservable.add(() => {
+    console.log('Drag started');
+  });
+  pointerDragBehavior.onDragObservable.add((event) => {
+    console.log('Dragging', event);
+  });
+  pointerDragBehavior.onDragEndObservable.add(() => {
+    console.log('Drag ended');
+  });
+
+  mesh.addBehavior(pointerDragBehavior);
+}
 
   // AR
   var createScene = async function () {
