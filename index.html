@@ -238,19 +238,25 @@
       engine = createDefaultEngine();
       if (!engine) throw "engine should not be null.";
 
-     if (!inARMode) {
-  scene = createRegularScene();
-  sceneToRender = scene;
-  startRenderLoop(engine, canvas);
-} else {
-  createScene().then(function (newScene) {
-    scene = newScene;
-    sceneToRender = scene;
-    startRenderLoop(engine, canvas);
-  });
-}
+      if (!inARMode) {
+        scene = createRegularScene();
+        sceneToRender = scene;
+        startRenderLoop(engine, canvas);
+      } else {
+        createScene().then(function (newScene) {
+          scene = newScene;
+          sceneToRender = scene;
+          startRenderLoop(engine, canvas);
+        });
+      }
 
-      
+      createScene().then(function (newScene) {
+        scene = newScene;
+        sceneToRender = scene;
+
+        //createBox(scene);
+        startRenderLoop(engine, canvas);
+      });
 
       // Resize
       window.addEventListener("resize", function () {
