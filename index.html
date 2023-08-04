@@ -165,8 +165,9 @@
           optionalFeatures: true,
         });
 
-        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
+        
         const fm = xr.baseExperience.featuresManager;
+        const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
 
         const marker = BABYLON.MeshBuilder.CreateGround(
           "marker",
