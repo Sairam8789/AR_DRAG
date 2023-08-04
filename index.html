@@ -165,8 +165,8 @@
           optionalFeatures: true,
         });
 
-        const fm = xr.baseExperience.featuresManager;
         const xrTest = fm.enableFeature(BABYLON.WebXRHitTest, "latest");
+        const fm = xr.baseExperience.featuresManager;
 
         const marker = BABYLON.MeshBuilder.CreateGround(
           "marker",
@@ -177,6 +177,23 @@
         marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
         marker.material.alpha = 0.5;
         marker.isVisible = false;
+        xrTest.onHitTestResultObservable.add((results) => {
+          if (ignoreHitTest) return;
+
+          if (results.length) {
+            if (!box) {
+              marker.isVisible = true;
+            }
+            let hitTest = results[0];
+            hitTest.transformationMatrix.decompose(
+              marker.scaling,
+              marker.rotationQuaternion,
+              marker.position
+            );
+          } else {
+            marker.isVisible = false;
+          }
+        });
 
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
           xrSessionInit = true; // XR session is now initialized
@@ -205,8 +222,7 @@
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
-            //marker.isVisible = false;
-            marker.material.alpha = 0;
+            marker.isVisible = false;
             xrTest.isEnabled = false;
             ignoreHitTest = true;
             setTimeout(() => {
@@ -215,23 +231,23 @@
           });
         });
 
-        xrTest.onHitTestResultObservable.add((results) => {
-          if (ignoreHitTest) return;
+        // xrTest.onHitTestResultObservable.add((results) => {
+        //   if (ignoreHitTest) return;
 
-          if (results.length) {
-            if (!box) {
-              marker.isVisible = true;
-            }
-            let hitTest = results[0];
-            hitTest.transformationMatrix.decompose(
-              marker.scaling,
-              marker.rotationQuaternion,
-              marker.position
-            );
-          } else {
-            marker.isVisible = false;
-          }
-        });
+        //   if (results.length) {
+        //     if (!box) {
+        //       marker.isVisible = true;
+        //     }
+        //     let hitTest = results[0];
+        //     hitTest.transformationMatrix.decompose(
+        //       marker.scaling,
+        //       marker.rotationQuaternion,
+        //       marker.position
+        //     );
+        //   } else {
+        //     marker.isVisible = false;
+        //   }
+        // });
 
         return scene;
       };
