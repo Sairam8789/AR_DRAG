@@ -180,21 +180,27 @@
         marker.isVisible = false;
         xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
   xrSessionInit = true; // XR session is now initialized
+           xrTest.onHitTestResultObservable.add((results) => {
+    if (ignoreHitTest) return;
+
+    if (results.length) {
+      let hitTest = results[0];
+      hitTest.transformationMatrix.decompose(
+        marker.scaling,
+        marker.rotationQuaternion,
+        marker.position
+      );
+      marker.isVisible = true; // Show the marker when a hit test result is available
+    } else {
+      marker.isVisible = false; // Hide the marker if no hit test result
+    }
+  });
   session.addEventListener("select", function () {
     if (!marker.isVisible) {
       return;
     }
 
-    xrTest.onHitTestResultObservable.add((results) => {
-      if (ignoreHitTest) return;
-
-      if (results.length) {
-        let hitTest = results[0];
-        hitTest.transformationMatrix.decompose(
-          marker.scaling,
-          marker.rotationQuaternion,
-          marker.position
-        );
+    
 
         if (!box) {
           // Load model
