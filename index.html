@@ -262,7 +262,7 @@
       // window.addEventListener("resize", function () {
       //   engine.resize();
       // });
-      if (!inARMode) {
+      if (inARMode) {
         scene = createRegularScene();
       } else {
         createARScene().then(function (newScene) {
