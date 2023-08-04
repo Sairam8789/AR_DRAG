@@ -154,7 +154,62 @@ var initialScale = null;
 
       //AR
       var createScene = async function () {
+
+         var scene = new BABYLON.Scene(engine);
+        var pointers = [];
+        var previousPinchDistance = 0;
+
         var scene = new BABYLON.Scene(engine);
+        // ... Rest of your AR scene setup ...
+
+        // Function to handle pinch gesture
+        function handlePinch() {
+          if (pointers.length === 2 && box) {
+            var currentPinchDistance = BABYLON.Vector2.Distance(
+              new BABYLON.Vector2(pointers[0].x, pointers[0].y),
+              new BABYLON.Vector2(pointers[1].x, pointers[1].y)
+            );
+
+            if (previousPinchDistance !== 0) {
+              var scaleFactor = currentPinchDistance / previousPinchDistance;
+              box.scaling.scaleInPlace(scaleFactor);
+            }
+
+            previousPinchDistance = currentPinchDistance;
+          }
+        }
+
+        // Modify scene's pointer events to track pinch gesture
+        scene.onPointerObservable.add((pointerInfo) => {
+          switch (pointerInfo.type) {
+            case BABYLON.PointerEventTypes.POINTERDOWN:
+              if (pointers.length < 2) {
+                pointers.push(pointerInfo.event);
+              }
+              break;
+            case BABYLON.PointerEventTypes.POINTERMOVE:
+              if (pointers.length < 2) return;
+
+              pointers = pointers.map((pointer) => {
+                return pointer.pointerId === pointerInfo.event.pointerId
+                  ? pointerInfo.event
+                  : pointer;
+              });
+
+              if (pointers.length === 2) {
+                handlePinch();
+              }
+              break;
+            case BABYLON.PointerEventTypes.POINTERUP:
+              pointers = pointers.filter((pointer) => {
+                return pointer.pointerId !== pointerInfo.event.pointerId;
+              });
+              if (pointers.length < 2) {
+                previousPinchDistance = 0;
+              }
+              break;
+          }
+        });
 
         var attachPointerDragBehavior = function (mesh) {
           var pointerDragBehavior = new BABYLON.PointerDragBehavior({
