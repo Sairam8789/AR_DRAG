@@ -240,6 +240,9 @@ var initialScale = null;
             sessionMode: "immersive-ar",
           },
           optionalFeatures: true,
+          pointerSelectionOptions: {
+            enablePointerSelectionOnAllControllers: true
+        }
         });
 
         const fm = xr.baseExperience.featuresManager;
