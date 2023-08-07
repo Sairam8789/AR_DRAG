@@ -166,26 +166,26 @@ var initialScale = null;
         // Function to handle pinch gesture
        var initialDistance = 0;
 
-canvas.addEventListener("touchstart", function(e) {
-    if (e.touches.length == 2) {
-        initialDistance = getDistance(e.touches[0], e.touches[1]);
-    }
-}, false);
+// canvas.addEventListener("touchstart", function(e) {
+//     if (e.touches.length == 2) {
+//         initialDistance = getDistance(e.touches[0], e.touches[1]);
+//     }
+// }, false);
 
-canvas.addEventListener("touchmove", function(e) {
-    if (e.touches.length == 2 && boxPlaced && inARMode) {
-        var currentDistance = getDistance(e.touches[0], e.touches[1]);
-        var scale = currentDistance / initialDistance;
-        box.scaling = box.scaling.scale(scale); // Adjust the scale of the box
-        initialDistance = currentDistance; // Update the initial distance
-    }
-}, false);
+// canvas.addEventListener("touchmove", function(e) {
+//     if (e.touches.length == 2 && boxPlaced && inARMode) {
+//         var currentDistance = getDistance(e.touches[0], e.touches[1]);
+//         var scale = currentDistance / initialDistance;
+//         box.scaling = box.scaling.scale(scale); // Adjust the scale of the box
+//         initialDistance = currentDistance; // Update the initial distance
+//     }
+// }, false);
 
-function getDistance(touch1, touch2) {
-    var x = touch1.clientX - touch2.clientX;
-    var y = touch1.clientY - touch2.clientY;
-    return Math.sqrt(x * x + y * y);
-}
+// function getDistance(touch1, touch2) {
+//     var x = touch1.clientX - touch2.clientX;
+//     var y = touch1.clientY - touch2.clientY;
+//     return Math.sqrt(x * x + y * y);
+// }
 
         
 
