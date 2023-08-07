@@ -67,6 +67,8 @@
       var ignoreHitTest = false;
       var inARMode = false;
       var boxPlaced = true;
+      var initialDistance = null;
+var initialScale = null;
 
 function handleZoom(evt) {
   if (evt.pointerId !== 0 && evt.pointerId !== 1) return; // Only consider the first two pointers
@@ -86,8 +88,7 @@ function handleZoom(evt) {
   }
 }
       
-var initialDistance = null;
-var initialScale = null;
+
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
           preserveDrawingBuffer: true,
