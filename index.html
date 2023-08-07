@@ -245,22 +245,22 @@ var initialScale = null;
               return;
             }
             if (!box) {
-              // Load model
-              // BABYLON.SceneLoader.ImportMesh(
-              //   "",
-              //   "/",
-              //   "AR_Precedent_V3_2Kres.glb",
-              //   scene,
-              //   function (newMeshes) {
-              //     box = newMeshes[0]; // Assuming the imported GLB has only one mesh
-              //     box.scaling = new BABYLON.Vector3(0.1, 0.1, 0.1); // scale down the model
-              //     attachOwnPointerDragBehavior(box);
-              //   }
-              // );
-              box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
-              box.material = new BABYLON.StandardMaterial("boxMat", scene);
-              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-              attachPointerDragBehavior(box);
+              Load model
+              BABYLON.SceneLoader.ImportMesh(
+                "",
+                "/",
+                "AR_Precedent_V3_2Kres.glb",
+                scene,
+                function (newMeshes) {
+                  box = newMeshes[0]; // Assuming the imported GLB has only one mesh
+                  box.scaling = new BABYLON.Vector3(0.1, 0.1, 0.1); // scale down the model
+                  attachOwnPointerDragBehavior(box);
+                }
+              );
+              // box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
+              // box.material = new BABYLON.StandardMaterial("boxMat", scene);
+              // box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+              //attachPointerDragBehavior(box);
              // scene.onPointerObservable.add(handleZoom, BABYLON.PointerEventTypes.POINTERMOVE);
             }
             box.position = marker.position.clone();
