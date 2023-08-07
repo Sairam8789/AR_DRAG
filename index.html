@@ -70,23 +70,23 @@
       var initialDistance = null;
 var initialScale = null;
 
-function handleZoom(evt) {
-  if (evt.pointerId !== 0 && evt.pointerId !== 1) return; // Only consider the first two pointers
+//function handleZoom(evt) {
+ // if (evt.pointerId !== 0 && evt.pointerId !== 1) return; // Only consider the first two pointers
 
-  var pointers = scene.pointerDownPredicate ? scene.getPointers(scene.pointerDownPredicate) : scene.pointers;
+ // var pointers = scene.pointerDownPredicate ? scene.getPointers(scene.pointerDownPredicate) : scene.pointers;
 
-  if (pointers.length === 2) { // Ensure there are two pointers
-    var distance = BABYLON.Vector2.Distance(new BABYLON.Vector2(pointers[0].x, pointers[0].y), new BABYLON.Vector2(pointers[1].x, pointers[1].y));
+ // if (pointers.length === 2) { // Ensure there are two pointers
+   // var distance = BABYLON.Vector2.Distance(new BABYLON.Vector2(pointers[0].x, pointers[0].y), new BABYLON.Vector2(pointers[1].x, pointers[1].y));
 
-    if (initialDistance == null) {
-      initialDistance = distance;
-      initialScale = box.scaling.clone();
-    } else {
-      var scaleFactor = distance / initialDistance;
-      box.scaling = initialScale.multiplyByFloats(scaleFactor, scaleFactor, scaleFactor);
-    }
-  }
-}
+   // if (initialDistance == null) {
+     // initialDistance = distance;
+    //  initialScale = box.scaling.clone();
+  //  } else {
+    //  var scaleFactor = distance / initialDistance;
+    //  box.scaling = initialScale.multiplyByFloats(scaleFactor, scaleFactor, scaleFactor);
+   // }
+ // }
+//}
       
 
       var createDefaultEngine = function () {
