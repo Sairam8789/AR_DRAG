@@ -66,28 +66,7 @@
       var box = null;
       var ignoreHitTest = false;
       var inARMode = false;
-      var boxPlaced = true;
-      var initialDistance = null;
-var initialScale = null;
-
-//function handleZoom(evt) {
- // if (evt.pointerId !== 0 && evt.pointerId !== 1) return; // Only consider the first two pointers
-
- // var pointers = scene.pointerDownPredicate ? scene.getPointers(scene.pointerDownPredicate) : scene.pointers;
-
- // if (pointers.length === 2) { // Ensure there are two pointers
-   // var distance = BABYLON.Vector2.Distance(new BABYLON.Vector2(pointers[0].x, pointers[0].y), new BABYLON.Vector2(pointers[1].x, pointers[1].y));
-
-   // if (initialDistance == null) {
-     // initialDistance = distance;
-    //  initialScale = box.scaling.clone();
-  //  } else {
-    //  var scaleFactor = distance / initialDistance;
-    //  box.scaling = initialScale.multiplyByFloats(scaleFactor, scaleFactor, scaleFactor);
-   // }
- // }
-//}
-      
+      var boxPlaced = false;
 
       var createDefaultEngine = function () {
         return new BABYLON.Engine(canvas, true, {
@@ -96,7 +75,6 @@ var initialScale = null;
           disableWebGL2Support: false,
         });
       };
-
       function attachOwnPointerDragBehavior(mesh) {
         var pointerDragBehavior = new BABYLON.PointerDragBehavior();
         pointerDragBehavior.moveAttached = false;
@@ -155,41 +133,7 @@ var initialScale = null;
 
       //AR
       var createScene = async function () {
-
-         var scene = new BABYLON.Scene(engine);
-        var pointers = [];
-        var previousPinchDistance = 0;
-
         var scene = new BABYLON.Scene(engine);
-        // ... Rest of your AR scene setup ...
-
-        // Function to handle pinch gesture
-       var initialDistance = 0;
-
-// canvas.addEventListener("touchstart", function(e) {
-//     if (e.touches.length == 2) {
-//         initialDistance = getDistance(e.touches[0], e.touches[1]);
-//     }
-// }, false);
-
-// canvas.addEventListener("touchmove", function(e) {
-//     if (e.touches.length == 2 && boxPlaced && inARMode) {
-//         var currentDistance = getDistance(e.touches[0], e.touches[1]);
-//         var scale = currentDistance / initialDistance;
-//         box.scaling = box.scaling.scale(scale); // Adjust the scale of the box
-//         initialDistance = currentDistance; // Update the initial distance
-//     }
-// }, false);
-
-// function getDistance(touch1, touch2) {
-//     var x = touch1.clientX - touch2.clientX;
-//     var y = touch1.clientY - touch2.clientY;
-//     return Math.sqrt(x * x + y * y);
-// }
-
-        
-
-            
 
         var attachPointerDragBehavior = function (mesh) {
           var pointerDragBehavior = new BABYLON.PointerDragBehavior({
@@ -220,9 +164,9 @@ var initialScale = null;
             sessionMode: "immersive-ar",
           },
           optionalFeatures: true,
-        //   pointerSelectionOptions: {
-        //     enablePointerSelectionOnAllControllers: true
-        // }
+          pointerSelectionOptions: {
+            enablePointerSelectionOnAllControllers: true,
+          },
         });
 
         const fm = xr.baseExperience.featuresManager;
@@ -245,28 +189,26 @@ var initialScale = null;
               return;
             }
             if (!box) {
-              Load model
-              BABYLON.SceneLoader.ImportMesh(
-                "",
-                "/",
-                "AR_Precedent_V3_2Kres.glb",
-                scene,
-                function (newMeshes) {
-                  box = newMeshes[0]; // Assuming the imported GLB has only one mesh
-                  box.scaling = new BABYLON.Vector3(0.1, 0.1, 0.1); // scale down the model
-                  attachOwnPointerDragBehavior(box);
-                }
-              );
-              // box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
-              // box.material = new BABYLON.StandardMaterial("boxMat", scene);
-              // box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
-              //attachPointerDragBehavior(box);
-             // scene.onPointerObservable.add(handleZoom, BABYLON.PointerEventTypes.POINTERMOVE);
+              // Load model
+              // BABYLON.SceneLoader.ImportMesh(
+              //   "",
+              //   "/",
+              //   "AR_Precedent_V3_2Kres.glb",
+              //   scene,
+              //   function (newMeshes) {
+              //     box = newMeshes[0]; // Assuming the imported GLB has only one mesh
+              //     box.scaling = new BABYLON.Vector3(0.1, 0.1, 0.1); // scale down the model
+              //     attachOwnPointerDragBehavior(box);
+              //   }
+              // );
+              box = BABYLON.MeshBuilder.CreateBox("box", { size: 0.3 }, scene);
+              box.material = new BABYLON.StandardMaterial("boxMat", scene);
+              box.material.diffuseColor = new BABYLON.Color3(1, 0, 0);
+              attachPointerDragBehavior(box);
             }
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
             box.scaling = marker.scaling.clone();
-           
             boxPlaced = true;
             marker.isVisible = false;
             xrTest.isEnabled = false;
@@ -277,9 +219,6 @@ var initialScale = null;
             }, 1000);
           });
         });
-        
-
-  
 
         xrTest.onHitTestResultObservable.add((results) => {
           if (ignoreHitTest) return;
