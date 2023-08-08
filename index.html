@@ -531,6 +531,37 @@ if (!inARMode) {
     startRenderLoop(engine, canvas);
   });
 }
+function attachOwnPointerDragBehavior(mesh) {
+  var pointerDragBehavior = new BABYLON.PointerDragBehavior();
+  pointerDragBehavior.moveAttached = false;
+  pointerDragBehavior.useObjectOrientationForDragging = false;
+
+  // Define the boundaries
+  var minX = -5;
+  var maxX = 5;
+  var minZ = -5;
+  var maxZ = 5;
+
+  pointerDragBehavior.onDragStartObservable.add((event) => {
+    console.log("startDrag");
+  });
+  pointerDragBehavior.onDragObservable.add((event) => {
+    console.log("drag");
+    var newPositionX = pointerDragBehavior.attachedNode.position.x + event.delta.x;
+    var newPositionZ = pointerDragBehavior.attachedNode.position.z + event.delta.z;
+
+    // Check boundaries for X and Z
+    if (newPositionX > minX && newPositionX < maxX &&
+        newPositionZ > minZ && newPositionZ < maxZ) {
+      pointerDragBehavior.attachedNode.position.x = newPositionX;
+      pointerDragBehavior.attachedNode.position.z = newPositionZ;
+    }
+  });
+  pointerDragBehavior.onDragEndObservable.add((event) => {
+    console.log("endDrag");
+  });
+  mesh.addBehavior(pointerDragBehavior);
+}
 
 createScene().then(function (newScene) {
   scene = newScene;
