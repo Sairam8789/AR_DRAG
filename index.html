@@ -270,7 +270,9 @@
       });
     </script>
   </body>
-</html>var canvas = document.getElementById("renderCanvas");
+</html>
+
+var canvas = document.getElementById("renderCanvas");
 
 var startRenderLoop = function (engine, canvas) {
   engine.runRenderLoop(function () {
@@ -288,6 +290,17 @@ var box = null;
 var ignoreHitTest = false;
 var inARMode = false;
 var boxPlaced = false;
+// Define a scaling factor
+const MINIMUM_SIZE = 0.1;
+const MAXIMUM_SIZE = 2;
+
+const pointerCache = [];
+let prevDiffX = -1;
+let prevDiffY = -1;
+let scalingFactor = 0.1;
+
+let clockwise = false;
+let antiClockwise = false;
 
 var createDefaultEngine = function () {
   return new BABYLON.Engine(canvas, true, {
@@ -296,6 +309,7 @@ var createDefaultEngine = function () {
     disableWebGL2Support: false,
   });
 };
+
 function attachOwnPointerDragBehavior(mesh) {
   var pointerDragBehavior = new BABYLON.PointerDragBehavior();
   pointerDragBehavior.moveAttached = false;
@@ -314,19 +328,6 @@ function attachOwnPointerDragBehavior(mesh) {
   });
   mesh.addBehavior(pointerDragBehavior);
 }
-// for web regular
-// var createBlueBox = function (scene) {
-//   var boxSize = 2;
-//   var box = BABYLON.MeshBuilder.CreateBox(
-//     "box",
-//     { size: boxSize },
-//     scene
-//   );
-//   box.position.y = boxSize / 2;
-//   var boxMaterial = new BABYLON.StandardMaterial("boxMaterial", scene);
-//   boxMaterial.diffuseColor = new BABYLON.Color3(0, 0, 1); // Blue color
-//   box.material = boxMaterial;
-// };
 
 var importModel = function (scene, onModelImported) {
   BABYLON.SceneLoader.ImportMesh(
@@ -341,6 +342,7 @@ var importModel = function (scene, onModelImported) {
   );
 };
 // Regular scene with a blue box
+
 var createRegularScene = function () {
   var scene = new BABYLON.Scene(engine);
   var camera = new BABYLON.ArcRotateCamera(
@@ -363,6 +365,7 @@ var createRegularScene = function () {
   //createBlueBox(scene); // Add blue box
   importModel(scene, function (model) {
     model.position.y = 2; // Adjust the position as needed
+    scene.debugLayer.show();
     // Add any additional adjustments to the model here, such as scaling or rotation
   });
   return scene;
@@ -372,12 +375,12 @@ var createRegularScene = function () {
 var createScene = async function () {
   var scene = new BABYLON.Scene(engine);
 
-  var attachPointerDragBehavior = function (mesh) {
-    var pointerDragBehavior = new BABYLON.PointerDragBehavior({
-      dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
-    });
-    mesh.addBehavior(pointerDragBehavior);
-  };
+  //   var attachPointerDragBehavior = function (mesh) {
+  //     var pointerDragBehavior = new BABYLON.PointerDragBehavior({
+  //       dragPlaneNormal: new BABYLON.Vector3(0, 1, 0),
+  //     });
+  //     mesh.addBehavior(pointerDragBehavior);
+  //   };
   var camera = new BABYLON.ArcRotateCamera(
     "camera1",
     -Math.PI / 2,
@@ -386,8 +389,9 @@ var createScene = async function () {
     BABYLON.Vector3.Zero(),
     scene
   );
-
+  createRegularScene();
   camera.setTarget(BABYLON.Vector3.Zero());
+
   camera.attachControl(canvas, true);
   var light = new BABYLON.HemisphericLight(
     "light",
@@ -415,8 +419,8 @@ var createScene = async function () {
     scene
   );
   marker.material = new BABYLON.StandardMaterial("markerMat", scene);
-  marker.material.diffuseColor = new BABYLON.Color3(0.5, 0.5, 0.5);
-  marker.material.alpha = 0.5;
+  marker.material.diffuseColor = new BABYLON.Color3(0, 0, 1);
+  marker.material.alpha = 0.1;
   marker.isVisible = false;
 
   xr.baseExperience.sessionManager.onXRSessionInit.add((session) => {
@@ -466,15 +470,6 @@ var createScene = async function () {
                 }
               )
             );
-            // Find the desired animation group by name
-            // const animation = animationGroups.find(
-            //   (group) => group.name === "CondFan_Action"
-            // );
-
-            // // Play the animation if found
-            // if (animation) {
-            //   animation.play(true); // The true argument makes the animation loop
-            // }
 
             box.position = marker.position.clone();
             box.rotationQuaternion = marker.rotationQuaternion.clone();
@@ -493,6 +488,28 @@ var createScene = async function () {
         ignoreHitTest = false;
         marker.isVisible = false;
       }, 1000);
+
+      // Define a function to handle the pinch gesture
+      //   function onPinch(evt) {
+      //     // Calculate the pinch distance
+      //     const pinchDistance = evt.radius;
+
+      //     // Determine the zoom direction based on the pinch distance
+      //     if (pinchDistance > 0) {
+      //       scalingFactor *= 1.01; // Zoom in
+      //     } else {
+      //       scalingFactor *= 0.99; // Zoom out
+      //     }
+
+      //     // Apply the scaling factor to the model
+      //     if (box) {
+      //       box.scaling = new BABYLON.Vector3(
+      //         scalingFactor,
+      //         scalingFactor,
+      //         scalingFactor
+      //       );
+      //     }
+      //   }
     });
   });
 
@@ -513,9 +530,138 @@ var createScene = async function () {
       marker.isVisible = false;
     }
   });
+  // for pinch gesture
+  scene.onPointerObservable.add((pointerInfo) => {
+    switch (pointerInfo.type) {
+      case BABYLON.PointerEventTypes.POINTERDOWN:
+        console.log("SCREEN COORDINATE:", pointerInfo.pickInfo.ray.origin);
+        pointerCache.push(pointerInfo);
+        //   console.log('pointerCache:',pointerCache)
+        break;
+      case BABYLON.PointerEventTypes.POINTERUP:
+        //   console.log('POINTER UP');
+        remove_event(pointerInfo);
+        break;
+      case BABYLON.PointerEventTypes.POINTERMOVE:
+        //   console.log('POINTER MOVE');
+        //   console.log('scalingFactor:',scalingFactor)
+        pointermove_handler(pointerInfo);
+        break;
+      default:
+        //   console.log('DEFAULT TYPE...?');
+        break;
+    }
+  });
+
+  function remove_event(pointerInfo) {
+    // Remove this event from the target's cache
+    for (let i = 0; i < pointerCache.length; i++) {
+      if (pointerCache[i].event.id === pointerInfo.event.id) {
+        pointerCache.splice(i, 1);
+        break;
+      }
+    }
+  }
+
+  function pointermove_handler(ev) {
+    // reset rotation flags
+    clockwise = false;
+    antiClockwise = false;
+
+    // Find this event in the cache and update its record with this event
+    for (var i = 0; i < pointerCache.length; i++) {
+      if (ev.event.pointerId == pointerCache[i].event.pointerId) {
+        pointerCache[i] = ev;
+        break;
+      }
+    }
+    // If two pointers are down, check for pinch gestures
+    if (pointerCache.length == 2) {
+      // pointerCache[0] will be first finger pressed, [1] will be this event
+
+      // assign the 2 pointers
+      const firstPoint = {
+        x: pointerCache[0].pickInfo.ray.origin.x,
+        y: pointerCache[0].pickInfo.ray.origin.y,
+      };
+      const secondPoint = {
+        x: pointerCache[1].pickInfo.ray.origin.x,
+        y: pointerCache[1].pickInfo.ray.origin.y,
+      };
+
+      // get the difference in X & Y coords between the 2 points
+      const curDiffX = Math.abs(firstPoint.x - secondPoint.x);
+      const curDiffY = Math.abs(firstPoint.y - secondPoint.y);
+
+      // console.table({x: [firstPoint.x,secondPoint.x], y: [firstPoint.y,secondPoint.y]})
+
+      // check we already have the previous difference from last move event
+      if (prevDiffX > 0 && prevDiffY > 0) {
+        // PINCH GESTURES
+        if (curDiffX > prevDiffX && curDiffY > prevDiffY) {
+          // The distance between the two pointers has increased on both axis
+          // increase scaling factor applied to base size
+          console.log("scaling up");
+          if (scalingFactor < MAXIMUM_SIZE) scalingFactor += 0.02;
+          // scale the model
+          box.scaling = new BABYLON.Vector3(
+            scalingFactor,
+            scalingFactor,
+            scalingFactor
+          );
+        }
+        if (curDiffX < prevDiffX && curDiffY < prevDiffY) {
+          // The distance between the two pointers has decreased
+          // same as above, but decrease scalingFactor
+          console.log("scaling down");
+          if (scalingFactor > MINIMUM_SIZE) scalingFactor -= 0.02;
+          box.scaling = new BABYLON.Vector3(
+            scalingFactor,
+            scalingFactor,
+            scalingFactor
+          );
+        }
+        // ROTATION GESTURES
+        // check if the points are moving apart on Y axis and together on X axis
+        if (curDiffX < prevDiffX && curDiffY > prevDiffY) {
+          // check position of the points on each axis
+          if (secondPoint.y > firstPoint.y && firstPoint.x > secondPoint.x) {
+            console.log("rotating clockwise (T)");
+            // clockwise = true
+            box.rotate(new BABYLON.Vector3(0, 1, 0), Math.PI / 180);
+          } else {
+            console.log("rotating anti-clockwise (T)");
+            // antiClockwise = true
+            box.rotate(new BABYLON.Vector3(0, 1, 0), (Math.PI / 180) * 359);
+          }
+        } else {
+          if (secondPoint.y > firstPoint.y && firstPoint.x > secondPoint.x) {
+            console.log("rotating anti-clockwise (X)");
+            // antiClockwise = true
+            box.rotate(new BABYLON.Vector3(0, 1, 0), (Math.PI / 180) * 359);
+          } else {
+            console.log("rotating clockwise (X)");
+            // clockwise = true
+            box.rotate(new BABYLON.Vector3(0, 1, 0), Math.PI / 180);
+          }
+        }
+      }
+
+      // Cache the distance for the next move event
+      prevDiffX = curDiffX;
+      prevDiffY = curDiffY;
+    }
+  }
 
   return scene;
 };
+// var startRenderLoop = function (engine, canvas) {
+//   engine.runRenderLoop(function () {
+//     if (sceneToRender && sceneToRender.activeCamera) {
+//       sceneToRender.render();
+//     }
+//   });
+// };
 
 engine = createDefaultEngine();
 if (!engine) throw "engine should not be null.";
@@ -531,37 +677,6 @@ if (!inARMode) {
     startRenderLoop(engine, canvas);
   });
 }
-function attachOwnPointerDragBehavior(mesh) {
-  var pointerDragBehavior = new BABYLON.PointerDragBehavior();
-  pointerDragBehavior.moveAttached = false;
-  pointerDragBehavior.useObjectOrientationForDragging = false;
-
-  // Define the boundaries
-  var minX = -5;
-  var maxX = 5;
-  var minZ = -5;
-  var maxZ = 5;
-
-  pointerDragBehavior.onDragStartObservable.add((event) => {
-    console.log("startDrag");
-  });
-  pointerDragBehavior.onDragObservable.add((event) => {
-    console.log("drag");
-    var newPositionX = pointerDragBehavior.attachedNode.position.x + event.delta.x;
-    var newPositionZ = pointerDragBehavior.attachedNode.position.z + event.delta.z;
-
-    // Check boundaries for X and Z
-    if (newPositionX > minX && newPositionX < maxX &&
-        newPositionZ > minZ && newPositionZ < maxZ) {
-      pointerDragBehavior.attachedNode.position.x = newPositionX;
-      pointerDragBehavior.attachedNode.position.z = newPositionZ;
-    }
-  });
-  pointerDragBehavior.onDragEndObservable.add((event) => {
-    console.log("endDrag");
-  });
-  mesh.addBehavior(pointerDragBehavior);
-}
 
 createScene().then(function (newScene) {
   scene = newScene;
@@ -575,35 +690,28 @@ createScene().then(function (newScene) {
 window.addEventListener("resize", function () {
   engine.resize();
 });
-const lines = [];
-const size = 1; // Size of the marker
-const dashSize = 0.05; // Size of the dashes
-const gapSize = 0.05; // Size of the gaps between dashes
 
-// Define the four corners of the square
-const corners = [
-    new BABYLON.Vector3(-size / 2, 0, -size / 2),
-    new BABYLON.Vector3(size / 2, 0, -size / 2),
-    new BABYLON.Vector3(size / 2, 0, size / 2),
-    new BABYLON.Vector3(-size / 2, 0, size / 2),
-];
 
-// Create lines for each side of the square
-for (let i = 0; i < 4; i++) {
-    const startCorner = corners[i];
-    const endCorner = corners[(i + 1) % 4];
-    const line = BABYLON.MeshBuilder.CreateDashedLines("dashedLines", {
-        points: [startCorner, endCorner],
-        dashSize: dashSize,
-        gapSize: gapSize,
-    }, scene);
 
-    line.color = new BABYLON.Color3(0, 0, 1); // Blue color
-    lines.push(line);
-}
 
-// Group the lines into a TransformNode for easier manipulation
-const marker = new BABYLON.TransformNode("marker", scene);
-lines.forEach(line => line.parent = marker);
-marker.isVisible = false;
+
+    
+  
+
+
+
+  
+
+  
+
+          
+           
+      
+      
+
+
+
+  
+
+
 
