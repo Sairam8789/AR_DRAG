@@ -696,7 +696,6 @@ window.addEventListener("resize", function () {
 
 
     
-  
 import {
   Engine,
   HemisphericLight,
@@ -714,10 +713,12 @@ import { PointerEventTypes } from "@babylonjs/core/Events/pointerEvents";
 import { AdvancedDynamicTexture, Button } from "@babylonjs/gui";
 
 import "@babylonjs/core/Debug/debugLayer";
+import { setupPinchZooming } from "./zoom.js";
 
 const canvas = document.getElementById("renderCanvas");
 const engine = new Engine(canvas);
 const scene = new Scene(engine);
+canvas.style.touchAction = "none";
 
 const camera = new ArcRotateCamera(
   "camera1",
@@ -739,16 +740,22 @@ light.intensity = 0.7;
 let arModel;
 let isInARMode = false;
 
-const MINIMUM_SIZE = 0.1;
-const MAXIMUM_SIZE = 2;
-
-const pointerCache = [];
-let prevDiffX = -1;
-let prevDiffY = -1;
-let scalingFactor = 0.1;
-
+let pointerCache = [];
+let prevDiffX = 0;
+let prevDiffY = 0;
 let clockwise = false;
 let antiClockwise = false;
+const MAXIMUM_SIZE = 2;
+const MINIMUM_SIZE = 0.1;
+let scalingFactor = 1;
+let isGestureInProgress = false;
+
+let prevDistance = 0;
+let lastAngle = null;
+let isInitialGesture = true;
+let prevFirstPoint = null;
+let prevSecondPoint = null;
+let ground;
 
 function attachOwnPointerDragBehavior(mesh) {
   var pointerDragBehavior = new PointerDragBehavior();
@@ -756,57 +763,37 @@ function attachOwnPointerDragBehavior(mesh) {
   pointerDragBehavior.useObjectOrientationForDragging = false;
 
   pointerDragBehavior.onDragStartObservable.add((event) => {
+    if (isGestureInProgress) {
+      return;
+    }
     console.log("startDrag");
   });
+
   pointerDragBehavior.onDragObservable.add((event) => {
+    if (isGestureInProgress) {
+      return;
+    }
+
+    pointerDragBehavior.attachedNode.position.x += event.delta.x;
+    pointerDragBehavior.attachedNode.position.z += event.delta.z;
+
     console.log("drag");
     pointerDragBehavior.attachedNode.position.x += event.delta.x;
     pointerDragBehavior.attachedNode.position.z += event.delta.z;
+    //ground.isVisible = true;
   });
+
   pointerDragBehavior.onDragEndObservable.add((event) => {
+    if (isGestureInProgress) {
+      return;
+    }
     console.log("endDrag");
+    //ground.isVisible = false;
   });
+
   mesh.addBehavior(pointerDragBehavior);
 }
 
-let arModelAnimations = [];
-
-// Helper function to play the animation by name
-function playAnimationByName(name, skeletons) {
-  for (let i = 0; i < skeletons.length; i++) {
-    const skeleton = skeletons[i];
-    for (let j = 0; j < skeleton.getAnimations().length; j++) {
-      const animation = skeleton.getAnimations()[j];
-      if (animation.name === name) {
-        scene.beginAnimation(skeleton, animation.from, animation.to, true);
-        return; // exit the function once the animation is found and started
-      }
-    }
-  }
-}
-
-function createBillboardedButtonForMesh(mesh, scene, camera) {
-  // Create a GUI texture and attach it to a plane
-  const plane = MeshBuilder.CreatePlane("plane", { size: 0.3 }, scene);
-  plane.parent = mesh;
-  plane.position.y += 1; // Adjust this value to position the button above your mesh
-
-  const advancedTexture = AdvancedDynamicTexture.CreateForMesh(plane);
-
-  const button = Button.CreateSimpleButton("btn", "Click Me");
-  button.width = 1;
-  button.height = 0.4;
-  button.color = "white";
-  button.background = "green";
-  advancedTexture.addControl(button);
-
-  scene.registerBeforeRender(() => {
-    plane.lookAt(camera.position);
-  });
-  button.onPointerUpObservable.add(() => {
-    playAnimationByName("CondFan_Action", arModelAnimations);
-  });
-}
 SceneLoader.ImportMesh(
   "",
   "./models/",
@@ -815,18 +802,162 @@ SceneLoader.ImportMesh(
   (newMeshes, particleSystems, skeletons) => {
     arModel = newMeshes[0];
     arModel.setEnabled(true);
+    console.log(arModel.name);
 
-    // Store the animations from the imported GLB
-    if (skeletons && skeletons.length > 0) {
-      animations = skeletons[2].getAnimations();
+    if (arModel.parent) {
+      console.log("The model has a parent:", arModel.parent.name);
     }
 
-    createBillboardedButtonForMesh(arModel, scene, camera);
-    // Rest of your code...
-  },
-  null,
-  (scene, message, exception) => {
-    console.error("Error loading the model:", message, exception);
+    if (arModel.rotationQuaternion) {
+      arModel.rotationQuaternion = null;
+    }
+
+    arModel.rotation.y = Math.PI * 2;
+    arModel.position.y = -0.5;
+
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      console.log("This is a mobile device");
+      arModel.rotation.y = Math.PI;
+      arModel.scaling = new BABYLON.Vector3(0.5, 0.5, 0.5);
+    } else {
+      console.log("This is a desktop device");
+    }
+
+    const children = arModel.getChildren();
+    if (children && children.length > 0) {
+      console.log("The model has children:", children);
+    }
+
+    attachOwnPointerDragBehavior(arModel);
+
+    function calculateDistance(point1, point2) {
+      const dx = point1.x - point2.x;
+      const dy = point1.y - point2.y;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    scene.onPointerObservable.add((pointerInfo) => {
+      switch (pointerInfo.type) {
+        case BABYLON.PointerEventTypes.POINTERDOWN:
+          pointerCache.push(pointerInfo);
+          break;
+        case BABYLON.PointerEventTypes.POINTERUP:
+          remove_event(pointerInfo);
+          break;
+        case BABYLON.PointerEventTypes.POINTERMOVE:
+          pointermove_handler(pointerInfo);
+          break;
+        default:
+          break;
+      }
+    });
+
+    function remove_event(pointerInfo) {
+      for (let i = 0; i < pointerCache.length; i++) {
+        if (pointerCache[i].event.id === pointerInfo.event.id) {
+          pointerCache.splice(i, 1);
+          break;
+        }
+      }
+    }
+
+    function pointermove_handler(ev) {
+      // Update the pointerCache with current event
+      for (let i = 0; i < pointerCache.length; i++) {
+        if (ev.event.pointerId == pointerCache[i].event.pointerId) {
+          pointerCache[i] = ev;
+          break;
+        }
+      }
+
+      if (pointerCache.length === 2) {
+        isGestureInProgress = true;
+
+        // Getting coordinates of two pointers
+        const firstPoint = {
+          x: pointerCache[0].pickInfo.ray.origin.x,
+          y: pointerCache[0].pickInfo.ray.origin.y,
+        };
+        const secondPoint = {
+          x: pointerCache[1].pickInfo.ray.origin.x,
+          y: pointerCache[1].pickInfo.ray.origin.y,
+        };
+        handleRotation(firstPoint, secondPoint);
+        // Calculate differences
+        const diffX = firstPoint.x - secondPoint.x;
+        const diffY = firstPoint.y - secondPoint.y;
+
+        const currentDistance = Math.sqrt(diffX * diffX + diffY * diffY);
+        const prevDistance = Math.sqrt(
+          prevDiffX * prevDiffX + prevDiffY * prevDiffY
+        );
+
+        // Check if fingers are moving apart or closer
+        if (currentDistance > prevDistance) {
+          scalingFactor += 0.02;
+        } else if (currentDistance < prevDistance) {
+          scalingFactor -= 0.02;
+        }
+
+        // Clamp scalingFactor between MAXIMUM_SIZE and MINIMUM_SIZE
+        scalingFactor = Math.max(
+          Math.min(scalingFactor, MAXIMUM_SIZE),
+          MINIMUM_SIZE
+        );
+
+        // Apply scaling
+        arModel.scaling = new BABYLON.Vector3(
+          scalingFactor,
+          scalingFactor,
+          scalingFactor
+        );
+
+        // Store current differences for the next event
+        prevDiffX = diffX;
+        prevDiffY = diffY;
+      } else {
+        isGestureInProgress = false;
+      }
+    }
+
+    function handleRotation(firstPoint, secondPoint) {
+      const curDiffX = Math.abs(firstPoint.x - secondPoint.x);
+      const curDiffY = Math.abs(firstPoint.y - secondPoint.y);
+
+      const ROTATION_SPEED = 5; // This value determines the speed. Adjust as per your requirement.
+
+      // ROTATION GESTURES
+      if (curDiffX < prevDiffX && curDiffY > prevDiffY) {
+        if (secondPoint.y > firstPoint.y && firstPoint.x > secondPoint.x) {
+          console.log("rotating clockwise (T)");
+          arModel.rotate(
+            new BABYLON.Vector3(0, 1, 0),
+            (Math.PI / 180) * ROTATION_SPEED
+          );
+        } else {
+          console.log("rotating anti-clockwise (T)");
+          arModel.rotate(
+            new BABYLON.Vector3(0, 1, 0),
+            (Math.PI / 180) * (360 - ROTATION_SPEED)
+          );
+        }
+      } else {
+        if (secondPoint.y > firstPoint.y && firstPoint.x > secondPoint.x) {
+          console.log("rotating anti-clockwise (X)");
+          arModel.rotate(
+            new BABYLON.Vector3(0, 1, 0),
+            (Math.PI / 180) * (360 - ROTATION_SPEED)
+          );
+        } else {
+          console.log("rotating clockwise (X)");
+          arModel.rotate(
+            new BABYLON.Vector3(0, 1, 0),
+            (Math.PI / 180) * ROTATION_SPEED
+          );
+        }
+      }
+    }
   }
 );
 
@@ -838,6 +969,10 @@ WebXRDefaultExperience.CreateAsync(scene, {
   optionalFeatures: true,
   uiOptions: {
     sessionMode: "immersive-ar",
+  },
+  optionalFeatures: true,
+  pointerSelectionOptions: {
+    enablePointerSelectionOnAllControllers: true,
   },
 }).then((xr) => {
   xr.baseExperience.sessionManager.onXRSessionInit.add(() => {
@@ -854,135 +989,14 @@ WebXRDefaultExperience.CreateAsync(scene, {
 
       arModel.setEnabled(true);
       console.log("AR model enabled");
-      attachOwnPointerDragBehavior(arModel);
-
-      scene.onPointerObservable.add((pointerInfo) => {
-        switch (pointerInfo.type) {
-          case PointerEventTypes.POINTERDOWN:
-            console.log("SCREEN COORDINATE:", pointerInfo.pickInfo.ray.origin);
-            pointerCache.push(pointerInfo);
-            //   console.log('pointerCache:',pointerCache)
-            break;
-          case PointerEventTypes.POINTERUP:
-            //   console.log('POINTER UP');
-            remove_event(pointerInfo);
-            break;
-          case PointerEventTypes.POINTERMOVE:
-            //   console.log('POINTER MOVE');
-            //   console.log('scalingFactor:',scalingFactor)
-            pointermove_handler(pointerInfo);
-            break;
-          default:
-            //   console.log('DEFAULT TYPE...?');
-            break;
-        }
-      });
-
-      function remove_event(pointerInfo) {
-        // Remove this event from the target's cache
-        for (let i = 0; i < pointerCache.length; i++) {
-          if (pointerCache[i].event.id === pointerInfo.event.id) {
-            pointerCache.splice(i, 1);
-            break;
-          }
-        }
-      }
-
-      function pointermove_handler(ev) {
-        // reset rotation flags
-        clockwise = false;
-        antiClockwise = false;
-
-        // Find this event in the cache and update its record with this event
-        for (var i = 0; i < pointerCache.length; i++) {
-          if (ev.event.pointerId == pointerCache[i].event.pointerId) {
-            pointerCache[i] = ev;
-            break;
-          }
-        }
-        // If two pointers are down, check for pinch gestures
-        if (pointerCache.length == 2) {
-          // pointerCache[0] will be first finger pressed, [1] will be this event
-
-          // assign the 2 pointers
-          const firstPoint = {
-            x: pointerCache[0].pickInfo.ray.origin.x,
-            y: pointerCache[0].pickInfo.ray.origin.y,
-          };
-          const secondPoint = {
-            x: pointerCache[1].pickInfo.ray.origin.x,
-            y: pointerCache[1].pickInfo.ray.origin.y,
-          };
-
-          // get the difference in X & Y coords between the 2 points
-          const curDiffX = Math.abs(firstPoint.x - secondPoint.x);
-          const curDiffY = Math.abs(firstPoint.y - secondPoint.y);
-
-          // console.table({x: [firstPoint.x,secondPoint.x], y: [firstPoint.y,secondPoint.y]})
-
-          // check we already have the previous difference from last move event
-          if (prevDiffX > 0 && prevDiffY > 0) {
-            // PINCH GESTURES
-            if (curDiffX > prevDiffX && curDiffY > prevDiffY) {
-              // The distance between the two pointers has increased on both axis
-              // increase scaling factor applied to base size
-              console.log("scaling up");
-              if (scalingFactor < MAXIMUM_SIZE) scalingFactor += 0.02;
-              // scale the model
-              arModel.scaling = Vector3(
-                scalingFactor,
-                scalingFactor,
-                scalingFactor
-              );
-            }
-            if (curDiffX < prevDiffX && curDiffY < prevDiffY) {
-              // The distance between the two pointers has decreased
-              // same as above, but decrease scalingFactor
-              console.log("scaling down");
-              if (scalingFactor > MINIMUM_SIZE) scalingFactor -= 0.02;
-              arModel.scaling = Vector3(
-                scalingFactor,
-                scalingFactor,
-                scalingFactor
-              );
-            }
-            // ROTATION GESTURES
-            // check if the points are moving apart on Y axis and together on X axis
-            if (curDiffX < prevDiffX && curDiffY > prevDiffY) {
-              // check position of the points on each axis
-              if (
-                secondPoint.y > firstPoint.y &&
-                firstPoint.x > secondPoint.x
-              ) {
-                console.log("rotating clockwise (T)");
-                // clockwise = true
-                arModel.rotate(new Vector3(0, 1, 0), Math.PI / 180);
-              } else {
-                console.log("rotating anti-clockwise (T)");
-                // antiClockwise = true
-                arModel.rotate(new Vector3(0, 1, 0), (Math.PI / 180) * 359);
-              }
-            } else {
-              if (
-                secondPoint.y > firstPoint.y &&
-                firstPoint.x > secondPoint.x
-              ) {
-                console.log("rotating anti-clockwise (X)");
-                // antiClockwise = true
-                arModel.rotate(new Vector3(0, 1, 0), (Math.PI / 180) * 359);
-              } else {
-                console.log("rotating clockwise (X)");
-                // clockwise = true
-                arModel.rotate(new Vector3(0, 1, 0), Math.PI / 180);
-              }
-            }
-          }
-
-          // Cache the distance for the next move event
-          prevDiffX = curDiffX;
-          prevDiffY = curDiffY;
-        }
-      }
+      //   ground = MeshBuilder.CreatePlane(
+      //     "plane",
+      //     { width: 2.5, height: 2.5 },
+      //     scene
+      //   );
+      //   ground.parent = arModel;
+      //   ground.rotation.x = Math.PI / 2;
+      //   ground.isVisible = false;
     }
   });
   scene.debugLayer.show();
@@ -995,6 +1009,11 @@ WebXRDefaultExperience.CreateAsync(scene, {
     }
   });
 });
+// Resize
+window.addEventListener("resize", function () {
+  engine.resize();
+});
+
 
 
 
